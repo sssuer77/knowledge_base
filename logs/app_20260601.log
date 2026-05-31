@@ -1,0 +1,70 @@
+2026-06-01 15:33:29.945 | INFO     | node_base.py                  :46   - ********************[node_demo]节点启动********************
+2026-06-01 15:33:30.002 | INFO     | node_demo.py                  :9    - 当前节点的具体业务逻辑
+2026-06-01 15:33:30.003 | INFO     | node_base.py                  :66   - ********************【node_demo】节点执行完成********************
+
+2026-06-01 15:38:45.099 | INFO     | node_entry.py                 :46   - ===== 开始node_entry节点单元测试 =====
+2026-06-01 15:38:45.154 | INFO     | node_base.py                  :46   - ********************[node_entry]节点启动********************
+2026-06-01 15:38:45.155 | INFO     | node_entry.py                 :27   - 【node_entry】节点逻辑
+2026-06-01 15:38:45.155 | INFO     | node_base.py                  :66   - ********************【node_entry】节点执行完成********************
+
+2026-06-01 15:38:45.156 | INFO     | node_base.py                  :46   - ********************[node_entry]节点启动********************
+2026-06-01 15:38:45.157 | INFO     | node_entry.py                 :27   - 【node_entry】节点逻辑
+2026-06-01 15:38:45.158 | INFO     | node_base.py                  :66   - ********************【node_entry】节点执行完成********************
+
+2026-06-01 15:38:45.159 | INFO     | node_base.py                  :46   - ********************[node_entry]节点启动********************
+2026-06-01 15:38:45.160 | INFO     | node_entry.py                 :27   - 【node_entry】节点逻辑
+2026-06-01 15:38:45.161 | INFO     | node_base.py                  :66   - ********************【node_entry】节点执行完成********************
+
+2026-06-01 15:38:45.162 | INFO     | node_entry.py                 :72   - ===== 结束node_entry节点单元测试 =====
+2026-06-01 15:55:24.470 | INFO     | test_graph_flow.py            :5    - ===== 开始测试 =====
+2026-06-01 15:55:24.603 | INFO     | node_base.py                  :46   - ********************[node_entry]节点启动********************
+2026-06-01 15:55:24.607 | INFO     | node_entry.py                 :27   - 【node_entry】节点逻辑
+2026-06-01 15:55:24.608 | INFO     | node_base.py                  :66   - ********************【node_entry】节点执行完成********************
+
+2026-06-01 15:55:24.610 | INFO     | node_base.py                  :46   - ********************[node_pdf_to_md]节点启动********************
+2026-06-01 15:55:24.612 | INFO     | node_pdf_to_md.py             :26   - 【node_pdf_to_md】节点逻辑
+2026-06-01 15:55:24.613 | INFO     | node_base.py                  :66   - ********************【node_pdf_to_md】节点执行完成********************
+
+2026-06-01 15:55:24.614 | INFO     | node_base.py                  :46   - ********************[node_md_img]节点启动********************
+2026-06-01 15:55:24.617 | INFO     | node_md_img.py                :27   - 【node_md_img】节点逻辑
+2026-06-01 15:55:24.618 | INFO     | node_base.py                  :66   - ********************【node_md_img】节点执行完成********************
+
+2026-06-01 15:55:24.620 | INFO     | node_base.py                  :46   - ********************[node_document_split]节点启动********************
+2026-06-01 15:55:24.621 | INFO     | node_document_split.py        :26   - 【node_document_split】节点逻辑
+2026-06-01 15:55:24.623 | INFO     | node_base.py                  :66   - ********************【node_document_split】节点执行完成********************
+
+2026-06-01 15:55:24.624 | INFO     | node_base.py                  :46   - ********************[node_item_name_recognition]节点启动********************
+2026-06-01 15:55:24.626 | INFO     | node_item_name_recognition.py :26   - 【node_item_name_recognition】节点逻辑
+2026-06-01 15:55:24.627 | INFO     | node_base.py                  :66   - ********************【node_item_name_recognition】节点执行完成********************
+
+2026-06-01 15:55:24.629 | INFO     | node_base.py                  :46   - ********************[node_bge_embedding]节点启动********************
+2026-06-01 15:55:24.630 | INFO     | node_bge_embedding.py         :26   - 【node_bge_embedding】节点逻辑
+2026-06-01 15:55:24.632 | INFO     | node_base.py                  :66   - ********************【node_bge_embedding】节点执行完成********************
+
+2026-06-01 15:55:24.634 | INFO     | node_base.py                  :46   - ********************[node_import_milvus]节点启动********************
+2026-06-01 15:55:24.636 | INFO     | node_import_milvus.py         :26   - 【node_import_milvus】节点逻辑
+2026-06-01 15:55:24.637 | INFO     | node_base.py                  :66   - ********************【node_import_milvus】节点执行完成********************
+
+2026-06-01 15:55:24.638 | INFO     | test_graph_flow.py            :17   - 工作流执行完成！最终状态: {'task_id': 'task_001', 'is_md_read_enabled': False, 'is_pdf_read_enabled': True, 'is_normal_split_enabled': True, 'is_silicon_flow_api_enabled': True, 'is_advanced_split_enabled': False, 'is_vllm_enabled': False, 'local_dir': '', 'local_file_path': '万用表的使用.pdf', 'file_title': '', 'pdf_path': '', 'md_path': '', 'split_path': '', 'embeddings_path': '', 'md_content': '', 'chunks': [], 'item_name': '', 'embeddings_content': []}
+2026-06-01 15:55:24.639 | INFO     | test_graph_flow.py            :28   - 图结构:
+2026-06-01 15:55:26.377 | INFO     | test_graph_flow.py            :32   - ===== 测试结束 =====
+2026-06-01 16:19:36.379 | INFO     | node_base.py                  :46   - ********************[node_entry]节点启动********************
+2026-06-01 16:19:36.443 | WARNING  | node_entry.py                 :49   - 文件类型校验失败：联想海豚用户手册.txt → 不支持的格式，仅支持.pdf/.md
+2026-06-01 16:19:36.445 | INFO     | node_entry.py                 :54   - 文件业务标识提取完成：file_title = 联想海豚用户手册
+2026-06-01 16:19:36.446 | INFO     | node_base.py                  :66   - ********************【node_entry】节点执行完成********************
+
+2026-06-01 16:19:36.447 | INFO     | node_base.py                  :46   - ********************[node_entry]节点启动********************
+2026-06-01 16:19:36.448 | INFO     | node_entry.py                 :45   - 文件类型校验通过：小米用户手册.md → MD格式，开启MD解析流程
+2026-06-01 16:19:36.449 | INFO     | node_entry.py                 :54   - 文件业务标识提取完成：file_title = 小米用户手册
+2026-06-01 16:19:36.449 | INFO     | node_base.py                  :66   - ********************【node_entry】节点执行完成********************
+
+2026-06-01 16:19:36.450 | INFO     | node_base.py                  :46   - ********************[node_entry]节点启动********************
+2026-06-01 16:19:36.451 | INFO     | node_entry.py                 :41   - 文件类型校验通过：小米用户手册.pdf → PDF格式，开启PDF解析流程
+2026-06-01 16:19:36.452 | INFO     | node_entry.py                 :54   - 文件业务标识提取完成：file_title = 小米用户手册
+2026-06-01 16:19:36.452 | INFO     | node_base.py                  :66   - ********************【node_entry】节点执行完成********************
+
+2026-06-01 16:19:36.453 | INFO     | node_base.py                  :46   - ********************[node_entry]节点启动********************
+2026-06-01 16:19:36.453 | INFO     | node_entry.py                 :41   - 文件类型校验通过：D:\Programming_Object\PythonProject\knowledge_base\doc\H3C LA2608室内无线网关 用户手册-6W100-整本手册.pdf → PDF格式，开启PDF解析流程
+2026-06-01 16:19:36.454 | INFO     | node_entry.py                 :54   - 文件业务标识提取完成：file_title = H3C LA2608室内无线网关 用户手册-6W100-整本手册
+2026-06-01 16:19:36.455 | INFO     | node_base.py                  :66   - ********************【node_entry】节点执行完成********************
+
