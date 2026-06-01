@@ -257,7 +257,7 @@ class NodePdfToMd(NodeBase):
                 shutil.rmtree(extract_target_dir)
                 logger.info(f"[步骤2/4] 已清理旧的解压目录：{extract_target_dir}")
             except Exception as e:
-                logger.warning(f"[步骤2/4] 清理旧目录失败，可能不影响新文件解压：{str(e)}")
+                logger.warning(f"[步骤2/4] 清理旧目录失败，可能影响新文件解压：{str(e)}")
 
         # 重新创建解压目录
         extract_target_dir.mkdir(parents=True, exist_ok=True)
@@ -311,3 +311,53 @@ class NodePdfToMd(NodeBase):
         final_md_path = str(target_md_file.absolute())
 
         return final_md_path
+
+
+
+
+
+
+def test_step2():
+
+    test_pdf_name = os.path.join("doc", "H3C LA2608室内无线网关 用户手册-6W100-整本手册.pdf")
+    test_pdf_path = os.path.join(PROJECT_ROOT, test_pdf_name)
+
+    # 构造测试状态，模拟流程入参
+    test_state = create_default_state(
+        task_id="task_demo",
+        pdf_path=test_pdf_path,
+        local_dir=os.path.join(PROJECT_ROOT, "output")
+    )
+
+    # 执行核心处理流程
+    node_pdf_to_md = NodePdfToMd()
+    node_pdf_to_md(test_state)
+
+def test_step1to2():
+
+    local_file = os.path.join("doc", "H3C LA2608室内无线网关 用户手册-6W100-整本手册.pdf")
+    local_file_path = os.path.join(PROJECT_ROOT, local_file)
+    local_dir = os.path.join(PROJECT_ROOT, "output")
+    initial_state = create_default_state(
+        task_id="task_demo",
+        local_file_path=local_file_path,
+        local_dir=local_dir
+    )
+
+    # step1
+    from app.import_process.agent.nodes.node_entry import NodeEntry
+    node_entry = NodeEntry()
+    state1 = node_entry(initial_state)
+    # step2
+    node_pdf_to_md = NodePdfToMd()
+    node_pdf_to_md(state1)
+
+if __name__ == "__main__":
+
+    import os
+    from app.import_process.agent.state import create_default_state
+    from app.utils.path_util import PROJECT_ROOT
+    logger.info(f"获取根地址：{PROJECT_ROOT}")
+
+    # test_step2()
+    test_step1to2()
