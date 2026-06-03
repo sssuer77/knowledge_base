@@ -15,7 +15,7 @@ _llm_client_cache = {}
 def get_llm_client(model: Optional[str] = None, json_mode: bool = False) -> ChatOpenAI:
     """
     获取带全局缓存的LangChain ChatOpenAI客户端实例
-    适配OpenAI/千问/即梦AI等**OpenAI兼容API**，支持自定义模型和JSON标准化输出
+    适配OpenAI兼容API，支持自定义模型和JSON标准化输出
     核心特性：缓存机制+配置统一加载+异常精准捕获+国产模型参数适配
 
     :param model: 模型名称，优先级：传入参数 > 配置文件lm_config.llm_model > 内置默认qwen3-32b
