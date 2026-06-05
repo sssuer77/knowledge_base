@@ -1,11 +1,9 @@
-from app.core.logger import logger
-import json
 import os
+# os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+import json
 import re
 from typing import Tuple, Any, List, Dict
-
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 from app.core.logger import logger
 from app.import_process.agent.node_base import NodeBase
 from app.import_process.agent.state import ImportGraphState
@@ -68,6 +66,7 @@ class NodeDocumentSplit(NodeBase):
         # 作用：打印核心统计数据，便于监控切分效果、调试问题（原始行数/最终Chunk数/首个Chunk预览）
         # 输出：无返回值，仅通过logger输出标准化统计日志
         self._step_5_print_stats(lines_count, sections)
+        logger.error(f"此时sections={sections}")
 
         # --- 6. Chunk结果本地JSON备份 + 状态更新 ---
         # 作用1：将最终Chunk列表备份到local_dir目录的chunks.json，便于后续问题排查、数据复用
@@ -211,6 +210,13 @@ class NodeDocumentSplit(NodeBase):
             refined_split.extend(self._split_long_section(sec, max_len))
         logger.info(f"步骤4-1：超长章节切分完成，共生成{len(refined_split)}个初始子Chunk")
 
+        # --- fix: 统一为所有chunks加上part属性 ---
+        # 无论有没有被二次切分，只要它现在是一个独立的 Chunk，就给它一个序号
+        for i, sec in enumerate(refined_split):
+            if "part" not in sec:
+                sec["part"] = i + 1  # 这样就保证了入库时一定有 part 字段
+
+
         # 阶段2：合并过短章节 → 减少碎片化，提升后续检索/大模型调用效果
         final_sections = self._merge_short_sections(refined_split)
         logger.info(f"步骤4-2：过短章节合并完成，最终得到{len(final_sections)}个Chunk")
@@ -288,6 +294,7 @@ class NodeDocumentSplit(NodeBase):
             })
 
         logger.debug(f"超长章节切分完成：{title} → 生成{len(sub_sections)}个子Chunk")
+        # logger.error(f"函数中sub_sections:{sub_sections}")
         return sub_sections
 
     def _merge_short_sections(self, sections: List[Dict[str, Any]], min_length: int = MIN_CONTENT_LENGTH) -> List[
@@ -417,12 +424,13 @@ if __name__ == '__main__':
     """
 
     """本地测试入口：单独运行该文件时，执行MD图片处理全流程测试"""
-
+    print(">>> 1. 开始运行")
     # 单元测试：执行MD图片处理 + 文档切分流程"
     from app.import_process.agent.state import create_default_state
-
+    print(">>> 2. state 导入成功")
 
     from app.utils.path_util import PROJECT_ROOT
+    print(f">>> 3. 根地址: {PROJECT_ROOT}")
     logger.info(f"获取根地址：{PROJECT_ROOT}")
 
     # 测试MD文件路径（已进行过pdf转md测试生成了md文件）
