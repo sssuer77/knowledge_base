@@ -1,5 +1,9 @@
 .env
 .idea/
+.venv
 logs/
 __pycache__/
 *.pyc
+test/
+output/
+wheels/

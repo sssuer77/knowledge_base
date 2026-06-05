@@ -66,7 +66,7 @@ class NodeDocumentSplit(NodeBase):
         # 作用：打印核心统计数据，便于监控切分效果、调试问题（原始行数/最终Chunk数/首个Chunk预览）
         # 输出：无返回值，仅通过logger输出标准化统计日志
         self._step_5_print_stats(lines_count, sections)
-        logger.error(f"此时sections={sections}")
+        # logger.error(f"此时sections={sections}")
 
         # --- 6. Chunk结果本地JSON备份 + 状态更新 ---
         # 作用1：将最终Chunk列表备份到local_dir目录的chunks.json，便于后续问题排查、数据复用
