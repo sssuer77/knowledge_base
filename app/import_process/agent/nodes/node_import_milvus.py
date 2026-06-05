@@ -150,7 +150,7 @@ class NodeImportMilvus(NodeBase):
         schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=65535)  # 切片内容
         schema.add_field(field_name="title", datatype=DataType.VARCHAR, max_length=65535)  # 切片标题
         schema.add_field(field_name="parent_title", datatype=DataType.VARCHAR, max_length=65535)  # 父标题
-        schema.add_field(field_name="part", datatype=DataType.INT8)  # 分片编号
+        schema.add_field(field_name="part", datatype=DataType.INT32)  # 分片编号
         schema.add_field(field_name="file_title", datatype=DataType.VARCHAR, max_length=65535)  # 源文件标题
         schema.add_field(field_name="item_name", datatype=DataType.VARCHAR, max_length=65535)  # 商品名称（幂等性依据）
         schema.add_field(field_name="sparse_vector", datatype=DataType.SPARSE_FLOAT_VECTOR)  # 稀疏向量

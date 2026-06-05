@@ -120,6 +120,17 @@ class KBImportWorkflow:
         workflow = cls()
         return workflow.run(initial_state, stream)
 
+    def stream(self, initial_state: ImportGraphState):
+        """
+        直接暴露 LangGraph 的流式接口
+        """
+        if not self._compiled_app:
+            self.compile()
+        return self._compiled_app.stream(initial_state)
+
+
+
+kb_import_app = KBImportWorkflow()
 
 # ===================== 用法示例 =====================
 
@@ -133,7 +144,6 @@ if __name__ == "__main__":
 
     # 用法1：标准类用法（推荐，支持多实例）
     # 创建工作流实例
-    kb_import_app = KBImportWorkflow()
 
     # 执行工作流
 
