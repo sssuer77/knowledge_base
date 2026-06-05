@@ -173,3 +173,30 @@ class NodeBgeEmbedding(NodeBase):
                 continue
 
         return output_data
+
+
+
+
+if __name__ == "__main__":
+
+    # ... existing code ...
+    test_state = create_default_state(
+        task_id="test_task_embedding_001",  # 测试任务 ID
+        chunks=[  # 模拟带 item_name 的文本切片（上游商品名称识别节点产出）
+            {
+                "content": "这是一个测试文档的内容，用于验证向量化是否成功。",
+                "title": "测试文档标题",
+                "item_name": "测试项目",
+                "file_title": "测试文件.pdf"
+            },
+            {
+                "content": "这是第二个测试文档的内容，用于验证批量处理逻辑。",
+                "title": "测试文档标题 2",
+                "item_name": "测试项目",
+                "file_title": "测试文件.pdf"
+            }
+        ]
+    )
+
+    node_bge_embedding = NodeBgeEmbedding()
+    node_bge_embedding(test_state)
