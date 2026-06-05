@@ -7,13 +7,13 @@
   },
   {
     "title": "# 目 录",
-    "content": "# 目 录\n\n\n# 1 H3C LA2608 室内无线网关用户手册 1\n\n1.1 概述 ···   \n1.2 配置LA2608 与无线控制器互通\n\n1.2.1 配置LA2608 ··  \n1.2.2 配置运营商无线控制器  \n1.2.3 验证LA2608 与无线控制器是否连通 · · 3\n\n\n# 1 H3C LA2608 室内无线网关用户手册\n\n\n# 1.1 概述\n\nH3C LA2608-GM/GU 室内无线网关（以下简称 LA2608）可以为用户提供无线服务，为了实现对设备的管理，LA2608需要通过 3G/4G网络连接到运营商无线控制器。\n\n![H3C LA2608室内无线网关通过SIM卡接入3G/4G网络，连接运营商并实现与H3C无线控制器互通。](http://192.168.121.128:9000/knowledge-base-files/upload-images/H3CLA2608室内无线网关用户手册-6W100-整本手册/0e2eb77b873265be02b023ce2afe6cf44de34b831f737f62b241d4317d028886.jpg)\n\n说明\n\n目前，LA2608只支持与 H3C公司的无线控制器互通。\n",
+    "content": "# 目 录\n\n\n# 1 H3C LA2608 室内无线网关用户手册 1\n\n1.1 概述 ···   \n1.2 配置LA2608 与无线控制器互通\n\n1.2.1 配置LA2608 ··  \n1.2.2 配置运营商无线控制器  \n1.2.3 验证LA2608 与无线控制器是否连通 · · 3\n\n\n# 1 H3C LA2608 室内无线网关用户手册\n\n\n# 1.1 概述\n\nH3C LA2608-GM/GU 室内无线网关（以下简称 LA2608）可以为用户提供无线服务，为了实现对设备的管理，LA2608需要通过 3G/4G网络连接到运营商无线控制器。\n\n![H3C LA2608室内无线网关通过SIM卡接入3G/4G网络，连接运营商并对接H3C无线控制器实现管理。](http://192.168.121.128:9000/knowledge-base-files/upload-images/H3CLA2608室内无线网关用户手册-6W100-整本手册/0e2eb77b873265be02b023ce2afe6cf44de34b831f737f62b241d4317d028886.jpg)\n\n说明\n\n目前，LA2608只支持与 H3C公司的无线控制器互通。\n",
     "file_title": "H3C LA2608室内无线网关 用户手册-6W100-整本手册",
     "parent_title": "# 目 录"
   },
   {
     "title": "# 1.2 配置LA2608与无线控制器互通",
-    "content": "# 1.2 配置LA2608与无线控制器互通\n\n如 图 1 所示，LA2608 安装了SIM卡，通过 3G/4G网络连接到运营商无线控制器，并向用户提供无线服务。关于LA2608的安装方法，请参见“H3C LA2608室内无线网关 快速安装指南”。\n\n图1 配置 LA2608与无线控制器互通  \n![LA2608通过3G/4G连接至运营商无线控制器（AC），为Host A/B/C提供WiFi接入服务的组网示意图。](http://192.168.121.128:9000/knowledge-base-files/upload-images/H3CLA2608室内无线网关用户手册-6W100-整本手册/f204a8881b1075be8d2d10c4dc2e261e7f3bcf139057a7bd2350d558b8ea6198.jpg)\n\n<details>\n<summary>flowchart</summary>\n\n```mermaid\ngraph LR\n    A[\"Host A\"] -->|WIFI| B[\"LA2608\"]\n    C[\"Host B\"] -->|WIFI| B\n    D[\"Host C\"] -->|WIFI| B\n    B -->|3G/4G| E[\"Internet\"]\n    E --> F[\"AC\"]\n```\n</details>\n",
+    "content": "# 1.2 配置LA2608与无线控制器互通\n\n如 图 1 所示，LA2608 安装了SIM卡，通过 3G/4G网络连接到运营商无线控制器，并向用户提供无线服务。关于LA2608的安装方法，请参见“H3C LA2608室内无线网关 快速安装指南”。\n\n图1 配置 LA2608与无线控制器互通  \n![LA2608通过WiFi连接终端，经3G/4G回传至Internet，最终与无线控制器（AC）互通的组网示意图。](http://192.168.121.128:9000/knowledge-base-files/upload-images/H3CLA2608室内无线网关用户手册-6W100-整本手册/f204a8881b1075be8d2d10c4dc2e261e7f3bcf139057a7bd2350d558b8ea6198.jpg)\n\n<details>\n<summary>flowchart</summary>\n\n```mermaid\ngraph LR\n    A[\"Host A\"] -->|WIFI| B[\"LA2608\"]\n    C[\"Host B\"] -->|WIFI| B\n    D[\"Host C\"] -->|WIFI| B\n    B -->|3G/4G| E[\"Internet\"]\n    E --> F[\"AC\"]\n```\n</details>\n",
     "file_title": "H3C LA2608室内无线网关 用户手册-6W100-整本手册",
     "parent_title": "# 1.2 配置LA2608与无线控制器互通"
   },
