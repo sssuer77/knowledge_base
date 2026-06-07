@@ -24,6 +24,7 @@ class HistoryMongoTool:
     核心功能：封装MongoDB的连接、集合初始化、索引创建，为上层提供统一的数据库操作入口
     扩展功能：支持与LangChain消息对象的格式转换（原代码预留能力）
     """
+
     def __init__(self):
         """
         类初始化方法：完成MongoDB的连接、数据库/集合获取、索引创建
@@ -68,6 +69,7 @@ except Exception as e:
     # 原因：模块加载阶段的异常可能导致整个程序启动失败，此处保留懒加载兜底（get_history_mongo_tool会再次尝试创建）
     logging.warning(f"Could not initialize HistoryMongoTool on module load: {e}")
 
+
 def get_history_mongo_tool() -> HistoryMongoTool:
     """
     获取HistoryMongoTool的单例实例（懒加载模式）
@@ -81,7 +83,6 @@ def get_history_mongo_tool() -> HistoryMongoTool:
         _history_mongo_tool = HistoryMongoTool()
     # 返回单例实例
     return _history_mongo_tool
-
 
 
 def clear_history(session_id: str) -> int:
@@ -175,7 +176,7 @@ def update_message_item_names(ids: List[str], item_names: List[str]) -> int:
         result = mongo_tool.chat_message.update_many(
             # 更新条件：复合条件，同时满足
             {
-                "_id": {"$in": object_ids}# 主键在指定的ID列表中（批量筛选）
+                "_id": {"$in": object_ids}  # 主键在指定的ID列表中（批量筛选）
             },
             {"$set": {"item_names": item_names}}  # 更新操作：设置新的商品名称列表
         )
@@ -211,6 +212,7 @@ def get_recent_messages(session_id: str, limit: int = 10) -> List[Dict[str, Any]
         cursor = mongo_tool.chat_message.find(query).sort("ts", ASCENDING).limit(limit)
         # 将游标转为列表，触发实际数据库查询，获取所有符合条件的文档
         messages = list(cursor)
+
         # 返回查询结果列表
         return messages
     except Exception as e:

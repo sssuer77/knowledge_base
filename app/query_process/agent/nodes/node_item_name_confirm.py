@@ -1,0 +1,36 @@
+import time
+import sys
+from app.utils.task_utils import add_running_task, add_done_task
+
+from app.clients.mongo_history_utils import save_chat_message
+
+
+def node_item_name_confirm(state):
+    """
+    节点功能：确认用户问题中的核心商品名称。
+    输入：state['original_query']
+    输出：更新 state['item_names']
+    """
+
+    def node_item_name_confirm(state):
+        print(f"---node_item_name_confirm 处理")
+
+        add_running_task(state['session_id'], sys._getframe().f_code.co_name, state.get("is_stream"))
+        add_done_task(state['session_id'], sys._getframe().f_code.co_name, state.get("is_stream"))
+
+        save_chat_message(state['session_id'], "user", state['original_query'], "", state.get("item_names", []))
+
+        print(f"---已保存对话 处理完成")
+    print(f"---node_item_name_confirm---开始处理")
+    # 记录任务开始
+    add_running_task(state["session_id"], sys._getframe().f_code.co_name,state["is_stream"])
+
+    # 后面会调用大模型，进行逻辑处理
+    time.sleep(1)
+    # 记录任务结束
+    add_done_task(state["session_id"], sys._getframe().f_code.co_name,state["is_stream"])
+
+    print(f"---node_item_name_confirm---处理结束")
+
+    return {"item_names": ["示例商品"]}
+
