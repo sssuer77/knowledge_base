@@ -7,3 +7,5 @@ __pycache__/
 test/
 output/
 wheels/
+app/query_process/page/frontend/node_modules
+app/import_process/page/frontend/node_modules

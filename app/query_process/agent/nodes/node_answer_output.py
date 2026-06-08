@@ -1,3 +1,4 @@
+import json
 import sys
 from app.utils.task_utils import add_running_task, add_done_task, set_task_result
 from app.utils.sse_utils import push_to_session, SSEEvent
@@ -10,6 +11,24 @@ import re
 
 _IMAGE_BLOCK_MARKER = "【图片】"
 MAX_CONTEXT_CHARS = 12000
+
+
+def _build_sources(reranked_docs):
+    """将重排文档转为前端溯源卡片结构。"""
+    sources = []
+    for doc in reranked_docs or []:
+        text = (doc.get("text") or "").strip()
+        if not text:
+            continue
+        source_type = doc.get("source") or ""
+        sources.append({
+            "title": doc.get("title") or "未命名文档",
+            "content": text,
+            "score": doc.get("score") or 0,
+            "type": "local" if source_type == "local" else "search",
+            "url": doc.get("url") or "",
+        })
+    return sources
 
 
 def node_answer_output(state: QueryGraphState) -> QueryGraphState:
@@ -43,7 +62,15 @@ def node_answer_output(state: QueryGraphState) -> QueryGraphState:
         step_3_generate_response(state, prompt)
 
     # 提取图片URL（用于历史记录和前端展示）
-    image_urls = _extract_images_from_docs(state.get("reranked_docs") or [])
+    reranked_docs = state.get("reranked_docs") or []
+    image_urls = _extract_images_from_docs(reranked_docs)
+    sources = _build_sources(reranked_docs)
+    if sources:
+        set_task_result(
+            state["session_id"],
+            "sources",
+            json.dumps(sources, ensure_ascii=False),
+        )
 
     # 阶段四：把答案写入到mongodb的history中
     if state.get("answer"):
@@ -61,7 +88,8 @@ def node_answer_output(state: QueryGraphState) -> QueryGraphState:
             {
                 "answer": state["answer"],
                 "status": "completed",
-                "image_urls": image_urls  # 发送图片URL给前端
+                "image_urls": image_urls,
+                "sources": sources,
             }
         )
 

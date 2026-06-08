@@ -1,8 +1,10 @@
 from pathlib import Path
+import json
 import uuid
 import uvicorn
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
 
@@ -25,17 +27,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 返回chat.html页面
-@app.get("/chat.html")  # 对外访问地址
+# 前端静态资源目录（Vue 构建产物）
+_PAGE_DIR = Path(__file__).absolute().parent.parent / "page" / "frontend" / "dist"
+_INDEX_HTML = _PAGE_DIR / "index.html"
+_ASSETS_DIR = _PAGE_DIR / "assets"
+
+if _ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=_ASSETS_DIR), name="query_assets")
+
+
+def _serve_chat_page():
+    if not _INDEX_HTML.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"前端页面未构建，请先执行: cd app/query_process/page/frontend && npm run build。路径：{_INDEX_HTML}",
+        )
+    return FileResponse(_INDEX_HTML, media_type="text/html")
+
+
+@app.get("/")
+async def index():
+    return _serve_chat_page()
+
+
+@app.get("/chat.html")
 async def chat():
-    # 从 api -> query_process
-    current_dir_parent_path = Path(__file__).absolute().parent.parent
-    # 定义chat.html位置
-    chat_html_path = current_dir_parent_path / "page" / "chat.html"
-    # 如果不存在，抛出404异常
-    if not chat_html_path.exists():
-        raise HTTPException(status_code=404, detail=f"没有查询到页面，地址为：{chat_html_path}！")
-    return FileResponse(chat_html_path)
+    return _serve_chat_page()
 
 
 # 定义接口接收的数据结构
@@ -85,11 +102,17 @@ async def query(background_tasks: BackgroundTasks, request: QueryRequest):
         # 同步运行
         run_query_graph(session_id, user_query, is_stream)
         answer = get_task_result(session_id, "answer", "")
+        sources_raw = get_task_result(session_id, "sources", "[]")
+        try:
+            sources = json.loads(sources_raw) if sources_raw else []
+        except json.JSONDecodeError:
+            sources = []
         return {
             "message": "处理完成！",
             "session_id": session_id,
             "answer": answer,
-            "done_list": []
+            "sources": sources,
+            "done_list": get_done_task_list(session_id),
         }
 
 

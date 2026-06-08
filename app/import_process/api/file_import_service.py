@@ -8,6 +8,8 @@ import uvicorn
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 # 项目内部工具/配置/客户端
 from app.clients.minio_utils import get_minio_client
 from app.utils.path_util import PROJECT_ROOT
@@ -41,27 +43,35 @@ app.add_middleware(
 )
 
 # --------------------------
-# 静态页面路由：返回文件导入前端页面import.html
+# 前端静态资源（Vue 构建产物，与 query 模块结构一致）
 # 访问地址：http://localhost:8000/import.html
 # --------------------------
+_PAGE_DIR = Path(__file__).absolute().parent.parent / "page" / "frontend" / "dist"
+_INDEX_HTML = _PAGE_DIR / "index.html"
+_ASSETS_DIR = _PAGE_DIR / "assets"
+
+if _ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=_ASSETS_DIR), name="import_assets")
+
+
+def _serve_import_page():
+    if not _INDEX_HTML.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"前端页面未构建，请先执行: cd app/import_process/page/frontend && npm run build。路径：{_INDEX_HTML}",
+        )
+    return FileResponse(_INDEX_HTML, media_type="text/html")
+
+
+@app.get("/")
+async def import_index():
+    return _serve_import_page()
+
+
 @app.get("/import.html", response_class=FileResponse)
 async def get_import_page():
-    """返回文件导入前端页面：import.html"""
-    # 拼接HTML文件绝对路径，基于项目根目录定位
-    html_abs_path = PROJECT_ROOT / "app/import_process/page/import.html"
-    # 日志记录页面访问的文件路径，方便排查文件不存在问题
-    logger.info(f"前端页面访问，文件绝对路径：{html_abs_path}")
-
-    # 校验文件路径是否存在，不存在则抛出404异常
-    if not os.path.exists(html_abs_path):
-        logger.error(f"前端页面文件不存在，路径：{html_abs_path}")
-        raise HTTPException(status_code=404, detail="import.html page not found")
-
-    # 以FileResponse返回HTML文件，浏览器自动渲染
-    return FileResponse(
-        path=html_abs_path,
-        media_type="text/html"  # 显式指定媒体类型为HTML，确保浏览器正确解析
-    )
+    logger.info(f"前端页面访问，文件绝对路径：{_INDEX_HTML}")
+    return _serve_import_page()
 
 
 
