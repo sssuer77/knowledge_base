@@ -70,30 +70,39 @@ knowledge_base/
 - 外部服务：Milvus、MinIO、MongoDB
 - 阿里云百炼 API Key、MinerU API Token
 
-### 生产部署（Docker / Linux VM）
+### 生产部署（VMware + 混合架构）
 
-- Linux 虚拟机（推荐 Ubuntu 22.04+）
+**宿主机（Windows）**：运行 Python 后端（导入 / 查询服务）、BGE 模型推理（需 GPU）
+
+**VMware 虚拟机（CentOS 7）**：Docker 仅部署中间件
+
 - Docker 24+、Docker Compose v2
-- NVIDIA 驱动 + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)（BGE 模型 GPU 推理）
-- 建议配置：8 核 CPU、32 GB 内存、100 GB+ 磁盘、NVIDIA GPU（≥ 8 GB 显存）
+- 建议配置：4 核 CPU、16 GB 内存、50 GB+ 磁盘（视数据量调整）
 
 ## 快速开始
 
-> 本节适用于**本地开发环境（Windows）**。生产环境 Docker 部署见 [生产部署](#生产部署docker--linux-vm)。
+> 本节适用于**本地开发环境（Windows 宿主机）**。中间件与混合部署说明见 [生产部署](#生产部署vmware--混合架构)。
 
-### 1. 克隆项目并安装 Python 依赖
+### 1. 申请 API Key
+
+部署前需先申请以下两项云端服务凭证，并填入 `.env`：
+
+| 环境变量 | 用途 | 申请地址 |
+|----------|------|----------|
+| `OPENAI_API_KEY` | 阿里云百炼大模型 API | [百炼控制台 → API Key](https://bailian.console.aliyun.com/cn-beijing/?spm=a2c4g.11186623.0.0.5f885389KrrOsZ&tab=mcp#/api-key) |
+| `MINERU_API_TOKEN` | MinerU PDF 解析服务 | [MinerU 官网](https://mineru.net/) |
+
+### 2. 克隆项目并安装 Python 依赖
 
 ```bash
 # 安装 uv（如未安装）
 pip install uv
 
-# 同步依赖（含本地 PyTorch wheel）
+# 同步依赖（PyTorch 从官方 CUDA 索引拉取）
 uv sync
 ```
 
-> 项目通过 `pyproject.toml` 中的 `[tool.uv.sources]` 锁定本地 PyTorch wheel（`wheels/` 目录），首次部署需确保对应 wheel 文件存在。
-
-### 2. 配置环境变量
+### 3. 配置环境变量
 
 ```bash
 cp .env.example .env
@@ -110,7 +119,7 @@ cp .env.example .env
 
 详细说明见 `.env.example` 中的注释。
 
-### 3. 下载模型
+### 4. 下载模型
 
 ```bash
 # BGE-M3 嵌入模型
@@ -122,7 +131,7 @@ python app/tool/download_reranker.py
 
 下载完成后，将 `.env` 中的模型路径指向实际目录。
 
-### 4. 构建前端
+### 5. 构建前端
 
 ```bash
 # 导入模块前端
@@ -136,7 +145,7 @@ npm install
 npm run build
 ```
 
-### 5. 启动服务
+### 6. 启动服务
 
 ```bash
 # 导入服务（端口 8000）
@@ -146,15 +155,19 @@ python app/import_process/api/file_import_service.py
 python app/query_process/api/query_service.py
 ```
 
-## 生产部署（Docker / Linux VM）
+## 生产部署（VMware + 混合架构）
 
-生产环境通过 Docker Compose 在 Linux 虚拟机上运行，典型架构如下：
+生产环境采用**宿主机 + VMware 虚拟机**的混合部署：中间件跑在虚拟机 Docker 里，Python 后端跑在 Windows 宿主机上，通过虚拟机 IP 访问 MinIO、Milvus、MongoDB。
 
 ```mermaid
-flowchart TB
-    subgraph VM["Linux VM"]
+flowchart LR
+    subgraph Host["Windows 宿主机"]
         Import["import-service :8000"]
         Query["query-service :8001"]
+        BGE["BGE 模型推理 GPU"]
+    end
+
+    subgraph VM["VMware 虚拟机 CentOS 7"]
         Milvus["Milvus :19530"]
         MinIO["MinIO :9000"]
         Mongo["MongoDB :27017"]
@@ -162,138 +175,352 @@ flowchart TB
 
     User["用户浏览器"] --> Import
     User --> Query
-    Import --> Milvus
-    Import --> MinIO
-    Query --> Milvus
-    Query --> Mongo
+    Import --> BGE
+    Query --> BGE
+    Import -->|"VM_IP"| Milvus
+    Import -->|"VM_IP"| MinIO
+    Query -->|"VM_IP"| Milvus
+    Query -->|"VM_IP"| Mongo
     Import --> LLM["百炼 API / MinerU API"]
     Query --> LLM
 ```
 
-### 容器与服务划分
+### 服务划分
 
-| 容器 | 端口 | 说明 |
-|------|------|------|
-| `import-service` | 8000 | 文档导入 + 前端静态页 |
-| `query-service` | 8001 | 智能问答 + 前端静态页 |
-| `milvus` | 19530 | 向量检索 |
-| `minio` | 9000 | 文件对象存储 |
-| `mongodb` | 27017 | 会话历史 |
+| 运行位置 | 组件 | 端口 | 说明 |
+|----------|------|------|------|
+| VMware 虚拟机 | `milvus` | 19530 | 向量检索 |
+| VMware 虚拟机 | `minio` | 9000 | 文件对象存储 |
+| VMware 虚拟机 | `mongodb` | 27017 | 会话历史 |
+| Windows 宿主机 | `import-service` | 8000 | 文档导入 + 前端 |
+| Windows 宿主机 | `query-service` | 8001 | 智能问答 + 前端 |
 
-> 导入与查询服务需挂载 GPU（`deploy.resources.reservations.devices` 或 `runtime: nvidia`），并映射 BGE 模型目录。
+### 1. 准备 VMware 虚拟机
 
-### 1. 准备虚拟机
+在 VMware 中创建 CentOS 7 虚拟机。若已安装 Docker，可跳过 **1.1**。
 
-```bash
-# 安装 Docker（Ubuntu 示例）
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# 安装 NVIDIA Container Toolkit（有 GPU 时）
-# 参考：https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
-```
-
-### 2. 准备部署目录
-
-在 VM 上建议按如下结构组织（路径可按实际调整）：
-
-```
-/opt/knowledge-base/
-├── docker-compose.yml      # Compose 编排文件
-├── .env                    # 生产环境变量（勿提交 Git）
-├── models/                 # BGE 模型（宿主机持久化）
-│   ├── bge-m3/
-│   └── bge-reranker-large/
-├── data/                   # 中间件数据卷
-│   ├── milvus/
-│   ├── minio/
-│   └── mongodb/
-├── logs/                   # 应用日志
-└── output/                 # 导入任务临时文件
-```
-
-首次部署前下载模型到宿主机 `models/` 目录：
+#### 1.1 安装 Docker
 
 ```bash
-# 在可联网的机器上下载后 scp 到 VM，或在 VM 上直接执行
-python app/tool/download_bgem3.py
-python app/tool/download_reranker.py
+# 1. 关闭防火墙
+systemctl stop firewalld
+systemctl disable firewalld
+
+# 2. 配置 yum 源
+# 备份原有的 repo 文件
+mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup
+# 替换为国内镜像源
+wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+# 更新 yum 镜像源
+yum clean all
+yum makecache
+yum -y update
+
+# 3. 安装相关工具
+# yum install -y vim      # 编辑器
+# yum install -y lrzsz  # 上传下载
+yum install -y gcc-c++
+yum install -y yum-utils device-mapper-persistent-data lvm2
+
+# 4. 添加 Docker 软件源
+yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+# 提前在本地缓存软件包信息，提高搜索安装速度
+yum makecache fast
+
+# 5. 安装 Docker
+yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# 6. 启动服务
+systemctl enable docker --now
+# 与上面等价：
+# systemctl start docker
+# systemctl enable docker
+
+# 7. 测试是否安装成功
+docker -v
+
+# 8. 配置镜像加速器（加快后续下载镜像的速度）
+mkdir -p /etc/docker
+tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://docker-0.unsee.tech",
+    "https://docker.sunzishaokao.com",
+    "https://docker.1panel.live",
+    "http://docker.nju.edu.cn"]
+}
+EOF
+systemctl daemon-reload
+systemctl restart docker
 ```
 
-### 3. 构建前端（写入镜像或挂载 dist）
+#### 1.2 启动 MinIO
 
-前端需在**构建镜像前**完成 `npm run build`，产物位于各模块的 `page/frontend/dist/`。Docker 镜像构建阶段应 COPY 这两个 dist 目录，或在 CI 中预构建后打包进镜像。
+> **版本说明**：MinIO 在 2024 年底 / 2025 年初的策略调整中，将 Web 控制台的用户管理、桶策略配置等核心功能移入了企业版付费专区。本脚本锁定使用 `RELEASE.2024-12-18T13-15-44Z` 版本，这是社区版中保留完整 Web UI 管理功能的最后一个稳定版本。
 
 ```bash
-cd app/import_process/page/frontend && npm ci && npm run build
-cd app/query_process/page/frontend && npm ci && npm run build
+# ==============================================================================
+# MinIO 对象存储安装脚本（社区版功能完整最后版本）
+# ==============================================================================
+#
+# 1. 镜像来源：quay.io/minio/minio
+#
+# 2. 端口规划：
+#    - 9000: S3 API 端口（程序代码读写数据使用）
+#    - 9001: Web Console 端口（浏览器后台管理使用）
+#    显式指定 --console-address ":9001" 可避免端口随机化或与 API 端口冲突。
+#
+# 3. 数据安全：
+#    - 通过 -v 将容器内 /data 挂载到宿主机 ./volumes/minio/data
+#    - 即使删除容器，数据也会保留在宿主机目录中。
+#
+# 4. 安全警告：
+#    - 默认账号密码为 minioadmin/minioadmin
+#    - 【生产环境务必修改】环境变量 MINIO_ROOT_USER 和 MINIO_ROOT_PASSWORD！
+# ==============================================================================
+
+# 安装并启动容器
+docker run -d --name minio \
+    --restart always \
+    -p 9000:9000 \
+    -p 9001:9001 \
+    -e "MINIO_ROOT_USER=minioadmin" \
+    -e "MINIO_ROOT_PASSWORD=minioadmin" \
+    -v "$(pwd)/volumes/minio/data:/data" \
+    quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z server /data \
+    --console-address ":9001"
+
+# ==============================================================================
+# 后续操作指引
+# ==============================================================================
+# 1. 查看日志确认启动成功:
+#    docker logs -f minio
+#
+# 2. 访问 Web 管理后台:
+#    http://<服务器IP>:9001
+#    账号: minioadmin
+#    密码: minioadmin
+# ==============================================================================
 ```
 
-### 4. 配置生产环境变量
+#### 1.3 部署 Milvus 与 Attu
 
-复制 `.env.example` 为 `.env`，并按 Docker 网络内服务名修改连接地址（示例）：
+部署 Milvus 2.5.5 单机版，解决 MinIO 端口冲突，并部署 Attu v2.5.10 可视化客户端。
+
+**第一步：部署 Milvus 单机版**
 
 ```bash
-# 中间件：使用 Compose 服务名，不要用 127.0.0.1
-MINIO_ENDPOINT=http://minio:9000
-MILVUS_URL=http://milvus:19530
-MONGO_URL=mongodb://mongodb:27017
+# 1. 下载 Milvus v2.5.5 官方单机版 docker-compose 配置文件
+wget https://github.com/milvus-io/milvus/releases/download/v2.5.5/milvus-standalone-docker-compose.yml -O docker-compose.yml
 
-# 模型路径：容器内挂载路径
-BGE_M3_PATH=/models/bge-m3
-BGE_RERANKER_LARGE=/models/bge-reranker-large
+# ⚠️ 需要先编辑这个 yml：
+# （1）修改 minio 的端口号，避免和之前安装的冲突
+# （2）添加 Attu 的容器配置
+# 这里直接提供修改后的配置文件内容：
+```
+
+```yaml
+version: '3.5'
+
+services:
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.18
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9003:9001"
+      - "9002:9000"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.5.5
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+    - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+
+  attu:
+    container_name: milvus-attu
+    image: zilliz/attu:v2.5.10
+    environment:
+      - MILVUS_URL=standalone:19530
+      - ATTU_LOG_LEVEL=info
+      - SERVER_NAME=auto_gui
+      - SERVER_PORT=7000
+    ports:
+      - "7000:7000"
+    volumes:
+      - /root/milvus:/app/tls
+    depends_on:
+      - standalone
+
+networks:
+  default:
+    name: milvus
+```
+
+```bash
+# 2. 启动所有相关服务
+docker compose up -d
+
+# 3. 检查 Milvus 运行状态（上一步完成后等几秒再试）
+docker compose ps
+
+# 【常用运维命令】
+# 停止 Milvus：docker compose stop
+# 重启 Milvus：docker compose restart
+# 删除所有容器和卷：docker compose down --volumes --remove-orphans
+# 查看运行日志（排查问题用）：docker compose logs milvus-standalone
+```
+
+**第二步：Attu 连接测试（验证 Milvus 部署成功）**
+
+若服务器开启了防火墙，需放行 7000 端口：
+
+```bash
+# CentOS 放行 7000 端口
+firewall-cmd --add-port=7000/tcp --permanent
+firewall-cmd --reload
+```
+
+浏览器访问 `http://<Linux服务器IP>:7000`，页面无需输入账号密码，直接点击「Connect」。若能进入 Attu 可视化界面，即表示 Milvus 部署与 Attu 连接全部成功。
+
+#### 1.4 部署 MongoDB
+
+MongoDB 是一个基于分布式文件存储的数据库，由 C++ 语言编写，旨在为 Web 应用提供可扩展的高性能数据存储解决方案。
+
+**Linux 下使用 Docker 安装 MongoDB**
+
+```bash
+# 1. 拉取 MongoDB 镜像
+docker pull mongo:latest
+
+# 2. 运行 MongoDB 容器
+# -p 27017:27017：将容器的 27017 端口映射到主机的 27017 端口
+# --name mongo：容器名称
+docker run -itd --name mongo -p 27017:27017 mongo
+
+# 3. 常用管理命令
+# 查看运行状态：
+docker ps | grep mongo
+# 停止 MongoDB 容器：
+docker stop mongo
+# 启动 MongoDB 容器（停止后再次启动）：
+docker start mongo
+# 重启 MongoDB 容器：
+docker restart mongo
+
+# 4. 进入 MongoDB 容器
+docker exec -it mongo mongosh
+```
+
+#### 1.5 MongoDB 客户端安装（Windows 宿主机）
+
+推荐使用 MongoDB Compass，这是 MongoDB 官方提供的图形化管理工具。
+
+1. **下载**：访问 [MongoDB Download Center](https://www.mongodb.com/try/download/compass)，选择 Windows 版本下载安装包。
+2. **安装**：运行下载的 `.exe` 或 `.msi` 文件，按照提示完成安装。
+3. **连接**：
+   - 打开 MongoDB Compass
+   - 在连接页面输入连接字符串（URI），例如 `mongodb://localhost:27017`（远程服务器时将 `localhost` 替换为服务器 IP）
+   - 点击 Connect
+
+> 确保 VMware 网络模式下宿主机可以访问虚拟机 IP（通常为 NAT 端口转发或桥接模式）。防火墙需放行 9000、19530、27017 端口。
+
+### 2. 配置宿主机环境
+
+在 Windows 宿主机上按 [快速开始](#快速开始) 完成依赖安装、模型下载与前端构建。
+
+`.env` 中中间件地址填写**虚拟机 IP**，不要使用 `127.0.0.1`：
+
+```bash
+# 将 <VM_IP> 替换为 VMware 虚拟机的实际 IP
+MINIO_ENDPOINT=http://<VM_IP>:9000
+MILVUS_URL=http://<VM_IP>:19530
+MONGO_URL=mongodb://<VM_IP>:27017
+
+# 模型路径：宿主机本地路径
+BGE_M3_PATH=D:/ai_models/modelscope_cache/models/Xorbits/bge-m3
+BGE_RERANKER_LARGE=D:/ai_models/modelscope_cache/models/rerank/BAAI/bge-reranker-large
 BGE_DEVICE=cuda:0
 BGE_RERANKER_DEVICE=cuda:0
-
-MODELSCOPE_CACHE=/models
-HF_HOME=/models/huggingface_cache
-MD_ROOT_DIR=/app/temp-files/
-
-# 日志级别建议生产环境调低
-LOG_CONSOLE_LEVEL=INFO
-LOG_FILE_LEVEL=INFO
 ```
 
-其余 LLM、MinerU 等云端 API 配置与本地开发相同，填入真实 Key 即可。
+其余 LLM、MinerU 等云端 API 配置与本地开发相同。
 
-### 5. 启动服务
+### 3. 启动宿主机后端
 
 ```bash
-cd /opt/knowledge-base
+# 导入服务（端口 8000）
+python app/import_process/api/file_import_service.py
 
-# 构建并后台启动全部容器
-docker compose up -d --build
-
-# 查看状态
-docker compose ps
-docker compose logs -f import-service query-service
+# 查询服务（端口 8001）
+python app/query_process/api/query_service.py
 ```
 
-常用运维命令：
-
-```bash
-docker compose restart import-service query-service   # 重启应用
-docker compose pull && docker compose up -d           # 更新镜像
-docker compose down                                   # 停止并移除容器（数据卷保留）
-```
-
-### 6. 验证部署
+### 4. 验证部署
 
 | 检查项 | 命令 / 地址 |
 |--------|-------------|
-| 查询服务健康 | `curl http://<VM_IP>:8001/health` |
-| 导入前端 | `http://<VM_IP>:8000/` |
-| 查询前端 | `http://<VM_IP>:8001/` |
-| Milvus 连通 | 查看 import/query 容器日志无连接报错 |
-| GPU 可用 | `docker exec import-service nvidia-smi` |
+| 中间件状态 | VM 上 `docker ps` 确认 minio、mongo 运行；Milvus 目录下 `docker compose ps` 确认栈内容器均为 running |
+| MinIO 连通 | 宿主机浏览器访问 `http://<VM_IP>:9001`（Console）或 API 端口 `9000` |
+| Attu / Milvus | 浏览器访问 `http://<VM_IP>:7000`，点击 Connect 进入可视化界面 |
+| 查询服务健康 | `curl http://127.0.0.1:8001/health` |
+| 导入前端 | `http://127.0.0.1:8000/` |
+| 查询前端 | `http://127.0.0.1:8001/` |
+| Milvus / MongoDB | 查看宿主机后端日志，确认无连接超时或拒绝报错 |
 
 ### 生产部署注意点
 
-- **PyTorch 平台差异**：`pyproject.toml` 中 Windows wheel 仅用于本地开发；Linux 镜像内需单独安装 CUDA 版 PyTorch，勿直接复用 `wheels/` 下的 Windows 包。
-- **端口暴露**：生产环境建议仅暴露 8000、8001 等业务端口，中间件端口不对公网开放。
-- **数据持久化**：`models/`、`data/`、`logs/`、`output/` 务必挂载宿主机目录或命名卷，避免容器重建丢数据。
-- **资源限制**：导入任务（PDF 解析 + 向量化）内存与 GPU 占用较高，建议 import/query 分容器部署并各自限制资源。
-- **密钥安全**：`.env` 通过挂载注入容器，不要打入镜像层。
+- **网络互通**：宿主机必须能 ping 通 `<VM_IP>`，且对应端口可达；NAT 模式需手动配置端口转发。
+- **GPU 在宿主机**：BGE 嵌入与重排模型运行在 Windows 宿主机，虚拟机无需 GPU 和 NVIDIA Container Toolkit。
+- **数据持久化**：Milvus / MinIO / MongoDB 的数据卷挂载在虚拟机本地，避免 `docker compose down` 后丢数据。
+- **端口安全**：中间件端口仅对宿主机或内网开放，不要暴露到公网。
+- **密钥安全**：`.env` 仅保存在宿主机，不要提交到 Git。
 
 ## 访问地址
 
@@ -304,7 +531,7 @@ docker compose down                                   # 停止并移除容器（
 | 查询前端 | http://127.0.0.1:8001/ | 智能问答界面 |
 | 查询 API 文档 | http://127.0.0.1:8001/docs | Swagger UI |
 
-生产环境将 `127.0.0.1` 替换为虚拟机 IP 或域名即可。
+本地开发与混合部署模式下，前后端均通过宿主机 `127.0.0.1` 访问；中间件通过 `.env` 中的 `<VM_IP>` 连接 VMware 虚拟机。
 
 ## 工作流说明
 
