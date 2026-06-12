@@ -5,9 +5,9 @@ from typing import List, Dict, Any
 from datetime import datetime
 import uvicorn
 # 第三方库
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 # 项目内部工具/配置/客户端
@@ -20,7 +20,11 @@ from app.utils.task_utils import (
     get_running_task_list,
     update_task_status,
     get_task_status,
+    TASK_STATUS_PROCESSING,
+    TASK_STATUS_COMPLETED,
+    TASK_STATUS_FAILED,
 )
+from app.utils.sse_utils import create_sse_queue, get_sse_queue, sse_generator, SSEEvent, push_to_session
 from app.import_process.agent.state import get_default_state
 from app.import_process.agent.main_graph import kb_import_app  # LangGraph全流程编译实例
 from app.core.logger import logger  # 项目统一日志工具
@@ -92,30 +96,35 @@ def run_graph_task(task_id: str, local_dir: str, local_file_path: str):
     """
     try:
         # 1. 更新任务全局状态为：处理中
-        update_task_status(task_id, "processing")
+        update_task_status(task_id, TASK_STATUS_PROCESSING, push_queue=True)
         logger.info(f"[{task_id}] 开始执行LangGraph全流程，本地文件路径：{local_file_path}")
 
         # 2. 初始化LangGraph状态：加载默认状态 + 注入当前任务的核心参数
         init_state = get_default_state()
-        init_state["task_id"] = task_id  # 任务ID关联
-        init_state["local_dir"] = local_dir  # 任务本地目录
-        init_state["local_file_path"] = local_file_path  # 上传文件本地路径
+        init_state["task_id"] = task_id
+        init_state["local_dir"] = local_dir
+        init_state["local_file_path"] = local_file_path
+        init_state["is_stream"] = True
 
-        # 3. 流式执行LangGraph全流程（stream模式：实时获取每个节点的执行结果）
+        # 3. 流式执行 LangGraph 全流程（节点内通过 SSE 推送进度）
         for event in kb_import_app.stream(init_state):
-            for node_name, node_result in event.items():
-                # 记录每个节点完成的日志，包含任务ID和节点名，方便追踪执行顺序
+            for node_name in event:
                 logger.info(f"[{task_id}] LangGraph节点执行完成：{node_name}")
-                # 将完成的节点名加入【已完成列表】，前端轮询/status/{task_id}可实时获取
-                add_done_task(task_id, node_name)
 
-        # 4. 全流程执行完成，更新任务全局状态为：已完成
-        update_task_status(task_id, "completed")
+        # 4. 全流程执行完成
+        update_task_status(task_id, TASK_STATUS_COMPLETED, push_queue=True)
+        push_to_session(task_id, SSEEvent.FINAL, {
+            "status": TASK_STATUS_COMPLETED,
+            "done_list": get_done_task_list(task_id),
+            "running_list": [],
+        })
+        push_to_session(task_id, SSEEvent.CLOSE, {})
         logger.info(f"[{task_id}] LangGraph全流程执行完毕，任务完成")
 
     except Exception as e:
-        # 5. 捕获全流程异常，更新任务全局状态为：失败，并记录错误日志（含堆栈）
-        update_task_status(task_id, "failed")
+        update_task_status(task_id, TASK_STATUS_FAILED, push_queue=True)
+        push_to_session(task_id, SSEEvent.ERROR, {"error": str(e)})
+        push_to_session(task_id, SSEEvent.CLOSE, {})
         logger.error(f"[{task_id}] LangGraph全流程执行失败，异常信息：{str(e)}", exc_info=True)
 
 
@@ -151,8 +160,10 @@ async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile
         task_ids.append(task_id)
         logger.info(f"[{task_id}] 开始处理上传文件，文件名：{file.filename}，文件类型：{file.content_type}")
 
-        # 3. 标记「文件上传」阶段为「运行中」，前端轮询可查
-        add_running_task(task_id, "upload_file")
+        # 3. 创建 SSE 队列并标记「文件上传」阶段为「运行中」
+        create_sse_queue(task_id)
+        update_task_status(task_id, TASK_STATUS_PROCESSING, push_queue=True)
+        add_running_task(task_id, "upload_file", is_stream=True)
 
         # 4. 构建该任务的本地独立目录：output/YYYYMMDD/TaskID，避免多文件重名冲突
         task_local_dir = os.path.join(date_based_root_dir, task_id)
@@ -192,8 +203,8 @@ async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile
             # MinIO上传失败，记录警告日志（不中断后续流程，本地文件仍可继续处理）
             logger.warning(f"[{task_id}] 文件上传MinIO失败，将继续执行本地处理流程，异常信息：{str(e)}", exc_info=True)
 
-        # 7. 标记「文件上传」阶段为「已完成」，前端轮询可查
-        add_done_task(task_id, "upload_file")
+        # 7. 标记「文件上传」阶段为「已完成」
+        add_done_task(task_id, "upload_file", is_stream=True)
 
         # 8. 将LangGraph全流程处理加入FastAPI后台任务（异步执行，不阻塞当前接口响应）
         background_tasks.add_task(run_graph_task, task_id, task_local_dir, local_file_abs_path)
@@ -240,8 +251,20 @@ async def get_task_progress(task_id: str):
     return task_status_info
 
 
-
-
+@app.get("/stream/{task_id}", summary="任务进度 SSE 流")
+async def stream_task_progress(task_id: str, request: Request):
+    """SSE 实时推送导入任务进度，前端通过 EventSource 订阅。"""
+    if get_sse_queue(task_id) is None:
+        create_sse_queue(task_id)
+    return StreamingResponse(
+        sse_generator(task_id, request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # --------------------------

@@ -37,8 +37,8 @@ export default {
         },
       },
       boxShadow: {
-        glow: '0 0 24px rgba(59, 130, 246, 0.15)',
-        input: '0 8px 32px rgba(0, 0, 0, 0.45)',
+        glow: '0 0 24px rgba(59, 130, 246, 0.12)',
+        input: '0 8px 32px rgba(0, 0, 0, 0.08)',
       },
     },
   },

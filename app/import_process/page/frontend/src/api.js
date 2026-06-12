@@ -29,6 +29,94 @@ export async function fetchTaskStatus(taskId) {
   return res.json()
 }
 
+function normalizeStatus(data) {
+  return {
+    status: data.status || 'processing',
+    done_list: data.done_list ?? [],
+    running_list: data.running_list ?? [],
+  }
+}
+
+/**
+ * SSE 流式订阅任务进度（实时推送，替代轮询）
+ * @param {string} taskId
+ * @param {{ onUpdate, onComplete, onError }} handlers
+ * @returns {() => void} stop
+ */
+export function streamTaskStatus(taskId, { onUpdate, onComplete, onError }) {
+  let es = null
+  let stopped = false
+
+  const stop = () => {
+    stopped = true
+    es?.close()
+  }
+
+  const applyUpdate = (raw) => {
+    const data = normalizeStatus(raw)
+    onUpdate?.(data)
+    return data
+  }
+
+  const finish = (data) => {
+    stop()
+    onComplete?.(data)
+  }
+
+  // 拉取一次当前状态，避免 SSE 连接前丢失的上传阶段事件
+  fetchTaskStatus(taskId)
+    .then(applyUpdate)
+    .catch(() => {})
+
+  es = new EventSource(`${API_BASE}/stream/${taskId}`)
+
+  es.addEventListener('ready', () => {
+    fetchTaskStatus(taskId)
+      .then(applyUpdate)
+      .catch(() => {})
+  })
+
+  es.addEventListener('progress', (e) => {
+    try {
+      applyUpdate(JSON.parse(e.data))
+    } catch { /* ignore */ }
+  })
+
+  es.addEventListener('final', (e) => {
+    try {
+      finish(applyUpdate(JSON.parse(e.data)))
+    } catch (err) {
+      stop()
+      onError?.(err)
+    }
+  })
+
+  es.addEventListener('error', (e) => {
+    try {
+      const payload = JSON.parse(e.data)
+      stop()
+      onError?.(new Error(payload.error || '处理失败'))
+    } catch { /* SSE 连接级 error，见 onerror */ }
+  })
+
+  es.onerror = () => {
+    if (stopped || es.readyState !== EventSource.CLOSED) return
+    fetchTaskStatus(taskId)
+      .then((raw) => {
+        const data = applyUpdate(raw)
+        if (data.status === 'completed' || data.status === 'failed') {
+          finish(data)
+        } else {
+          onError?.(new Error('SSE 连接中断'))
+        }
+      })
+      .catch((err) => onError?.(err))
+  }
+
+  return stop
+}
+
+/** @deprecated 保留兼容，推荐使用 streamTaskStatus */
 export function pollTaskStatus(taskId, { interval = 1000, onUpdate, onComplete, onError }) {
   let timer = null
   let stopped = false
@@ -42,10 +130,10 @@ export function pollTaskStatus(taskId, { interval = 1000, onUpdate, onComplete, 
     if (stopped) return
     try {
       const data = await fetchTaskStatus(taskId)
-      onUpdate?.(data)
+      onUpdate?.(normalizeStatus(data))
       if (data.status === 'completed' || data.status === 'failed') {
         stop()
-        onComplete?.(data)
+        onComplete?.(normalizeStatus(data))
       }
     } catch (err) {
       stop()

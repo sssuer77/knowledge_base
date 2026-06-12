@@ -193,7 +193,7 @@ class NodeMdImg(NodeBase):
 
 
     def _step_3_generate_summaries(self, doc_stem: str, targets: List[Tuple[str, str, Tuple[str, str]]],
-                                  requests_per_minute: int = 9) -> Dict[str, str]:
+                                  requests_per_minute: int = 500) -> Dict[str, str]:
         """
         步骤3：批量为待处理图片生成内容摘要，带API速率限制防止触发大模型限流
         :param doc_stem: 文档文件名（不含后缀），作为大模型prompt上下文
@@ -529,6 +529,6 @@ if __name__ == "__main__":
     from app.utils.path_util import PROJECT_ROOT
     logger.info(f"获取根地址：{PROJECT_ROOT}")
 
-    # test_step3()
+    test_step3()
 
-    test_step1to3()
+    # test_step1to3()

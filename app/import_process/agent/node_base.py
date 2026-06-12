@@ -46,20 +46,16 @@ class NodeBase(ABC):
         logger.info(f"{'*'*20}[{self.name}]节点启动{'*'*20}")
         logger.debug(f"[{self.name}]节点当前工作流状态：{format_state(state)}")
 
+        is_stream = state.get("is_stream", False)
+
         # 开始:记录节点运行状态
-        # 此处为任务追踪，后面会讲
-        add_running_task(state["task_id"], self.name)
+        add_running_task(state["task_id"], self.name, is_stream)
 
         try:
-
-            # sleep(1)
-
-            # 节点核心处理逻辑
             state = self.process(state)
 
             # 结束:记录节点运行状态
-            # 此处为任务追踪，后面会讲
-            add_done_task(state["task_id"], self.name)
+            add_done_task(state["task_id"], self.name, is_stream)
 
             # 节点完成日志，打印当前工作流状态
             logger.debug(f"【{self.name}】节点更新后工作流状态：{format_state(state)}")

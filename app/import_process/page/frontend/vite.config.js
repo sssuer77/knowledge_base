@@ -14,6 +14,7 @@ export default defineConfig({
     proxy: {
       '/upload': 'http://127.0.0.1:8000',
       '/status': 'http://127.0.0.1:8000',
+      '/stream': 'http://127.0.0.1:8000',
       '/health': 'http://127.0.0.1:8000',
     },
   },

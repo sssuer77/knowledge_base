@@ -12,6 +12,7 @@ class ImportGraphState(TypedDict):
     使用字典式访问(如 state["session_id"],state.get("embedding_chunks"))
     """
     task_id: str            # 任务唯一ID,用于追踪日志
+    is_stream: bool         # 是否通过 SSE 推送进度
 
     # --- 流程控制标记 ---
     is_md_read_enabled: bool    # 是否启用 Markdown 读取路径
@@ -45,6 +46,7 @@ class ImportGraphState(TypedDict):
 # 定义图状态的默认初始值
 graph_default_state: ImportGraphState ={
     "task_id": "",
+    "is_stream": False,
     "is_md_read_enabled": False,
     "is_pdf_read_enabled": False,
     "is_normal_split_enabled": True,
