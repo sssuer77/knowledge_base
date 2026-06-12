@@ -14,9 +14,9 @@ dependencies = [
     "numpy>=1.26.4,<2.0.0",  # 显式限制在 2.0 以下
     "pymilvus[milvus-lite,model]>=2.6.10",
     "pymongo>=4.16.0",
-    "torch>=2.11.0",
-    "torchvision>=0.26.0",
-    "torchaudio>=2.11.0",
+    "torch>=2.4.0",
+    "torchvision>=0.19.0",
+    "torchaudio>=2.4.0",
     "flagembedding>=1.3.5",
     "modelscope>=1.35.1",
     "transformers>=4.45.0,<5.0.0",
@@ -29,13 +29,12 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-# 核心：锁定本地安装源，确保永远不从网络重复下载这 2.3GB
-torch = { path = "./wheels/torch-2.4.0+cu121-cp311-cp311-win_amd64.whl" }
-torchvision = { path = "./wheels/torchvision-0.19.0+cu121-cp311-cp311-win_amd64.whl" }
-torchaudio = { path = "./wheels/torchaudio-2.4.0+cu121-cp311-cp311-win_amd64.whl" }
+torch = { index = "pytorch-cuda" }
+torchvision = { index = "pytorch-cuda" }
+torchaudio = { index = "pytorch-cuda" }
 
 
 [[tool.uv.index]]
 name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu128"
+url = "https://download.pytorch.org/whl/cu121"
 explicit = true
